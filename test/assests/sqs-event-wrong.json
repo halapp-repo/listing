@@ -1,0 +1,20 @@
+{
+    "Records": [
+        {
+            "messageId": "d287db9d-6f29-4694-8ba6-a6a7b0a8d53e",
+            "receiptHandle": "AQEB6hOMzawsPULlwosqh1vCbi5CNcfrPAgcZbopKDXk8SRtAfnIt77ioNBHDNk7fU7kh+lAbIvQfEOw4FnottnsVaSnBI+4H+FBnu6P8YVeDjc1Uz3saevreg+i7FunNbfN0ZQH1buS4ZZk4jUAcKqwEMbgEZqDRL7vqVcBS4BjZAs2q/b8dbJJqdXb2hm+vDxuujaEi6Qr00n0dDXfDm2szGbxfuuoheSa8K3aLTlsXZT+TrxpSjJMejG+amHFxdFxCVhG3SRolvkTGfKuseLtOLvwofOKfpegth8Gw1U4PVOGsqWGp1zpETorcsrYSnLtUj4StKMTfXZSMfuOArMeIrYZUVUv8DQE7WrOdum8lEfQU3ErouGAMtmRoB8wnJs1HVgvG1P7+fxBPSwArzPMtg==",
+            "body": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"eu-central-1\",\"eventTime\":\"2022-09-18T23:13:52.597Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AIDA25XC7RBKNM34KQPPX\"},\"requestParameters\":{\"sourceIPAddress\":\"213.194.69.204\"},\"responseElements\":{\"x-amz-request-id\":\"DDH84W304YK7FCDK\",\"x-amz-id-2\":\"O2UHkScvlBeJuKEdGPiSfnIL51+Nq6kr8WbWPKE/zkEeKxiI380+J8MyilOsx8HSPiSwpcHt0I2YWD2TNXUPt+Z0oSKARFXs\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"Yzc0MmQyNzgtMGQ4YS00YWYxLWI5NzEtY2FkZWE4MTNjNzE1\",\"bucket\":{\"name\":\"hal-price-751021557844\",\"ownerIdentity\":{\"principalId\":\"AA8Y0XCQV89IG\"},\"arn\":\"arn:aws:s3:::hal-price-751021557844\"},\"object\":{\"key\":\"sanfrancisco/produce/input/greens.xlsx\",\"size\":6053,\"eTag\":\"798fb27dd87aab0ad2e0a25c53b4b20a\",\"versionId\":\"ClvNTRZaZdltPuPfQUVEWAV9_MoY_1x3\",\"sequencer\":\"006327A6308DB3F75A\"}}}]}",
+            "attributes": {
+                "ApproximateReceiveCount": "1",
+                "SentTimestamp": "1663542834239",
+                "SenderId": "AIDAIZRJAGH76OE2BC64E",
+                "ApproximateFirstReceiveTimestamp": "1663542834243"
+            },
+            "messageAttributes": {},
+            "md5OfBody": "49eb2376701f651e4ad97822fd2a2705",
+            "eventSource": "aws:sqs",
+            "eventSourceARN": "arn:aws:sqs:eu-central-1:751021557844:HalPricesUpdatesQueue",
+            "awsRegion": "eu-central-1"
+        }
+    ]
+}

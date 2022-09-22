@@ -20,9 +20,18 @@ export class HalappListingStack extends cdk.Stack {
     // *************
     // Create Queue
     // *************
+    const pricesUpdateDLQ = new sqs.Queue(this, 'HalPricesUpdatesDLQ', {
+      queueName: "HalPricesUpdatesDLQ",
+      retentionPeriod: cdk.Duration.hours(10),
+    });
     const pricesUpdateQueue = new sqs.Queue(this, 'HalPricesUpdatesQueue', {
       queueName: "HalPricesUpdatesQueue",
       visibilityTimeout: cdk.Duration.minutes(2),
+      retentionPeriod: cdk.Duration.days(1),
+      deadLetterQueue: {
+        queue: pricesUpdateDLQ,
+        maxReceiveCount: 4
+      }
     });
     pricesUpdateQueue.addToResourcePolicy(
       new PolicyStatement({
@@ -41,6 +50,7 @@ export class HalappListingStack extends cdk.Stack {
         }
       })
     )
+
     // **************
     // Create Bucket
     // **************
@@ -197,14 +207,16 @@ export class HalappListingStack extends cdk.Stack {
     //
     // ****PRODUCTS API Handler****
     //
-    const products = listingApi.root.addResource('products')
-    const getProductsHandler = new NodejsFunction(this, 'ListingGetProductsHandler', {
+    const productsResource = listingApi.root.addResource('products')
+    const productResource = productsResource.addResource('{productId}')
+    const productPricesResource = productResource.addResource('prices')
+    const getProductPricesHandler = new NodejsFunction(this, 'ListingGetProductPricesHandler', {
       memorySize: 1024,
       runtime: lambda.Runtime.NODEJS_16_X,
-      functionName: 'ListingGetProductsHandler',
+      functionName: 'ListingGetProductPricesHandler',
       handler: 'handler',
       timeout: cdk.Duration.seconds(15),
-      entry: path.join(__dirname, `/../src/listing-get-products-handler/index.ts`),
+      entry: path.join(__dirname, `/../src/listing-get-product-prices-handler/index.ts`),
       bundling: {
         target: 'es2020',
         keepNames: true,
@@ -213,19 +225,20 @@ export class HalappListingStack extends cdk.Stack {
         minify: true,
       },
     });
-    products.addMethod(
+    productPricesResource.addMethod(
       'GET',
-      new apigateway.LambdaIntegration(getProductsHandler, { proxy: true }),
+      new apigateway.LambdaIntegration(getProductPricesHandler, { proxy: true }),
       {
         requestParameters: {
+          "method.request.querystring.duration": true,
           "method.request.querystring.location": true,
           "method.request.querystring.type": true,
-          "method.request.querystring.date": false
+          "method.request.querystring.from_date": false
         },
         requestValidator: listingApiValidator,
       }
     );
-    halPricesTable.grantReadData(getProductsHandler)
+    halPricesTable.grantReadData(getProductPricesHandler)
     //
     // PRICES API Handler
     //
@@ -250,8 +263,9 @@ export class HalappListingStack extends cdk.Stack {
       new apigateway.LambdaIntegration(getPricesHandler, { proxy: true }),
       {
         requestParameters: {
-          "method.request.querystring.product_id": true,
-          "method.request.querystring.duration": true
+          "method.request.querystring.location": true,
+          "method.request.querystring.type": true,
+          "method.request.querystring.date": false
         },
         requestValidator: listingApiValidator,
       }
