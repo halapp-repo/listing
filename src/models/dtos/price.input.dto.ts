@@ -1,6 +1,6 @@
 export interface PriceInputDTO {
-    ProductId: string
-    ProductName: string
-    Price: number
-    Unit: string
+  ProductId: string;
+  ProductName: string;
+  Price: number;
+  Unit: string;
 }

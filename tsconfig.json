@@ -18,12 +18,13 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
     "typeRoots": [
       "./node_modules/@types"
     ],
     "skipLibCheck": true,
-    "outDir": "build"
+    "outDir": "build",
   },
   "exclude": [
     "node_modules",

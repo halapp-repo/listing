@@ -12,7 +12,9 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.104",
+    "@types/http-errors": "^1.8.2",
     "@types/jest": "^27.5.2",
+    "@types/lodash": "^4.14.185",
     "@types/node": "^18.7.18",
     "@types/prettier": "2.6.0",
     "aws-cdk": "2.41.0",
@@ -26,10 +28,18 @@
     "@aws-sdk/client-dynamodb": "^3.172.0",
     "@aws-sdk/client-s3": "^3.171.0",
     "@aws-sdk/lib-dynamodb": "^3.172.0",
+    "@middy/core": "^3.4.0",
+    "@middy/http-cors": "^3.4.0",
+    "@middy/http-error-handler": "^3.4.0",
+    "@middy/http-response-serializer": "^3.4.0",
     "aws-cdk-lib": "2.41.0",
     "constructs": "^10.0.0",
     "exceljs": "^4.3.0",
+    "http-errors": "^2.0.0",
+    "lodash": "^4.17.21",
     "moment-timezone": "^0.5.37",
-    "source-map-support": "^0.5.21"
+    "reflect-metadata": "^0.1.13",
+    "source-map-support": "^0.5.21",
+    "tsyringe": "^4.7.0"
   }
 }
