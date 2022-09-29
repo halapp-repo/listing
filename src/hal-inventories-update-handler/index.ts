@@ -32,7 +32,7 @@ export async function handler(event: SQSEvent) {
       await s3Service.moveObject(
         Bucket,
         Key,
-        `archive/${currentTimestamp}_${FileName}.${FileExtension}`
+        `archive/${currentTimestamp}_${FileName}${FileExtension}`
       );
     }
   }

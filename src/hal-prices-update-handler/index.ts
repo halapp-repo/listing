@@ -41,7 +41,7 @@ export async function handler(event: SQSEvent) {
       await s3Service.moveObject(
         Bucket,
         Key,
-        `${locationType}/${productType}/archive/${currentTimestamp}_${FileName}.${FileExtension}`
+        `${locationType}/${productType}/archive/${currentTimestamp}_${FileName}${FileExtension}`
       );
     }
   }
