@@ -234,7 +234,8 @@ export class HalappListingStack extends cdk.Stack {
         requestParameters: {
           "method.request.querystring.location": true,
           "method.request.querystring.type": true,
-          "method.request.querystring.date": false,
+          "method.request.querystring.from_date": false,
+          "method.request.querystring.to_date": false,
         },
         requestValidator: listingApiValidator,
       }

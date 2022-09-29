@@ -4,7 +4,6 @@ import middy from "@middy/core";
 import cors from "@middy/http-cors";
 import httpErrorHandler from "@middy/http-error-handler";
 import httpResponseSerializer from "@middy/http-response-serializer";
-import * as createError from "http-errors";
 import {
   APIGatewayProxyEvent,
   Context,
@@ -14,8 +13,6 @@ import { LocationType } from "../models/location-type";
 import { ProductType } from "../models/product-type-type";
 import { DurationType } from "../models/duration-type";
 import PriceRepository from "../repositories/price.repository";
-import { PriceToPriceRepositoryDTOMapper as RepoMapper } from "../mappers/price-to-price-repository-dto.mapper";
-import { RequestValidationError } from "../models/errors/request-validation.error";
 import { PriceToProductPriceVMMapper as VMMapper } from "../mappers/price-to-product-price-vm.mapper";
 import createHttpError = require("http-errors");
 import { diContainer } from "../core/di-registry";

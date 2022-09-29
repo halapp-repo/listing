@@ -22,7 +22,10 @@ const lambdaHandler = async function (
 ): Promise<APIGatewayProxyResult> {
   const location = getLocation(event.queryStringParameters?.location);
   const type = getProductType(event.queryStringParameters?.type);
-  const [from, to] = getDateInterval(event.queryStringParameters?.date);
+  const [from, to] = getDateInterval(
+    event.queryStringParameters?.from_date,
+    event.queryStringParameters?.to_date
+  );
 
   const repo = diContainer.resolve<PriceRepository>("PriceRepository");
   const prices = await repo.getPrices(from, to, location, type);
@@ -35,15 +38,22 @@ const lambdaHandler = async function (
   };
 };
 
-function getDateInterval(date: string | undefined): [string, string] {
+function getDateInterval(fromDate?: string, toDate?: string): [string, string] {
   let from: string;
   let to: string;
-  if (!date) {
-    from = moment.tz("Europe/Istanbul").startOf("day").format();
+  if (!fromDate) {
+    from = moment
+      .tz("Europe/Istanbul")
+      .subtract(1, "d")
+      .startOf("day")
+      .format();
+  } else {
+    from = moment.tz(fromDate, "Europe/Istanbul").startOf("day").format();
+  }
+  if (!toDate) {
     to = moment.tz("Europe/Istanbul").endOf("day").format();
   } else {
-    from = moment.tz(date, "Europe/Istanbul").startOf("day").format();
-    to = moment.tz(date, "Europe/Istanbul").endOf("day").format();
+    to = moment.tz(toDate, "Europe/Istanbul").endOf("day").format();
   }
   console.log("From & To Date :", JSON.stringify({ from, to }, null, 2));
   return [from, to];
