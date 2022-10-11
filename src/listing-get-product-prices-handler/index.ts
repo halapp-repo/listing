@@ -26,8 +26,8 @@ const lambdaHandler = async function (
   const location = getLocation(event.queryStringParameters?.location);
   const productType = getProductType(event.queryStringParameters?.type);
   const [from, to] = getDateInterval(
-    duration,
-    event.queryStringParameters?.from_date
+    event.queryStringParameters?.from_date,
+    event.queryStringParameters?.to_date
   );
 
   const repo = diContainer.resolve<PriceRepository>("PriceRepository");
@@ -87,42 +87,20 @@ function getProductType(type: string | undefined): ProductType {
   return productType;
 }
 function getDateInterval(
-  duration: DurationType,
-  fromDate: string | undefined
+  fromDate: string | undefined,
+  toDate: string | undefined
 ): [string, string] {
   let from: string;
-  const to = moment.tz("Europe/Istanbul").endOf("day").format();
-  if (fromDate) {
-    from = moment.tz(fromDate, "Europe/Istanbul").startOf("day").format();
+  let to: string;
+  if (!fromDate) {
+    from = moment.tz("Europe/Istanbul").startOf("day").format();
   } else {
-    switch (duration) {
-      case DurationType.daily:
-        from = moment
-          .tz(fromDate, "Europe/Istanbul")
-          .subtract(30, "d")
-          .format();
-        break;
-      case DurationType.weekly:
-        from = moment
-          .tz(fromDate, "Europe/Istanbul")
-          .subtract(52, "w")
-          .format();
-        break;
-      case DurationType.monthly:
-        from = moment
-          .tz(fromDate, "Europe/Istanbul")
-          .subtract(12, "m")
-          .format();
-        break;
-      case DurationType.yearly:
-        from = moment
-          .tz(fromDate, "Europe/Istanbul")
-          .subtract(10, "y")
-          .format();
-        break;
-      default:
-        throw createHttpError(400, "Unsuported duration");
-    }
+    from = moment.tz(fromDate, "Europe/Istanbul").startOf("day").format();
+  }
+  if (!toDate) {
+    to = moment.tz("Europe/Istanbul").endOf("day").format();
+  } else {
+    to = moment.tz(toDate, "Europe/Istanbul").endOf("day").format();
   }
   console.log("Date interval :", JSON.stringify({ from, to }, null, 2));
   return [from, to];
