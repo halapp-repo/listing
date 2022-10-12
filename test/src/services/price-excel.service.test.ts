@@ -4,7 +4,7 @@ import * as path from "path";
 import { PriceExcelService } from "../../../src/services/price-excel.service";
 import { PriceToPriceInputDTOMapper } from "../../../src/mappers/price-to-price-input-dto.mapper";
 import { diContainer } from "../../../src/core/di-registry";
-import { ProductType } from "../../../src/models/product-type-type";
+import { ProductType } from "../../../src/models/product-type";
 import { LocationType } from "../../../src/models/location-type";
 
 describe("PriceExcelService", () => {

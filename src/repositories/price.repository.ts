@@ -2,10 +2,10 @@ import { BatchWriteCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { inject, injectable } from "tsyringe";
 import { IMapper } from "../mappers/base.mapper";
 import { PriceRepositoryDTO } from "../models/dtos/price.repository.dto";
-import { DurationType } from "../models/duration-type";
+import { IntervalType } from "../models/interval-type";
 import { LocationType } from "../models/location-type";
 import { Price } from "../models/price";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
 import { chuckArray } from "../utils/array.utils";
 import { DynamoStore } from "./dynamo-store";
 
@@ -39,12 +39,17 @@ export default class PriceRepository {
       await this.store.dynamoClient.send(command);
     }
   }
-  async getPrices(
-    fromDate: string,
-    toDate: string,
-    location: LocationType,
-    type: ProductType
-  ): Promise<Price[]> {
+  async getPrices({
+    fromDate,
+    toDate,
+    location,
+    type,
+  }: {
+    fromDate: string;
+    toDate: string;
+    location: LocationType;
+    type: ProductType;
+  }): Promise<Price[]> {
     console.log("Fetching Price By Date");
     const command = new QueryCommand({
       TableName: this.tableName,
@@ -66,7 +71,7 @@ export default class PriceRepository {
   }
   async getPricesByProductId(
     productId: string,
-    duration: DurationType,
+    duration: IntervalType,
     location: LocationType,
     type: ProductType,
     fromDate: string,
@@ -74,7 +79,7 @@ export default class PriceRepository {
   ): Promise<Price[]> {
     console.log("Fetching Price By Product");
     const productKey =
-      !duration || duration == DurationType.daily
+      !duration || duration == IntervalType.daily
         ? `${productId}#${location}#${type}`
         : `${productId}#${location}#${type}#${duration}`;
     const command = new QueryCommand({

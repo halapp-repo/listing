@@ -4,7 +4,7 @@ import { inject, injectable } from "tsyringe";
 import { PriceInputDTO } from "../models/dtos/price.input.dto";
 import { LocationType } from "../models/location-type";
 import { Price } from "../models/price";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
 import { BaseFileService } from "./base-file.service";
 import { PriceToPriceInputDTOMapper as PrToPrInMapper } from "../mappers/price-to-price-input-dto.mapper";
 

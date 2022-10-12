@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { Inventory } from "../../../src/models/inventory";
-import { ProductType } from "../../../src/models/product-type-type";
+import { ProductType } from "../../../src/models/product-type";
 import { InventoryService } from "../../../src/services/inventory.service";
 import { diContainer } from "../../../src/core/di-registry";
 import { InventoryType } from "../../../src/models/inventory-type";

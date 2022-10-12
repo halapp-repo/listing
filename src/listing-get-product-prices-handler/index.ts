@@ -10,8 +10,8 @@ import {
   APIGatewayProxyResult,
 } from "aws-lambda";
 import { LocationType } from "../models/location-type";
-import { ProductType } from "../models/product-type-type";
-import { DurationType } from "../models/duration-type";
+import { ProductType } from "../models/product-type";
+import { IntervalType } from "../models/interval-type";
 import PriceRepository from "../repositories/price.repository";
 import { PriceToProductPriceVMMapper as VMMapper } from "../mappers/price-to-product-price-vm.mapper";
 import createHttpError = require("http-errors");
@@ -53,11 +53,11 @@ function getProductId(productId: string | undefined): string {
   }
   return productId;
 }
-function getDuration(duration: string | undefined): DurationType {
+function getDuration(duration: string | undefined): IntervalType {
   if (!duration) {
     throw createHttpError(400, "location must be defined");
   }
-  const durationType = DurationType[duration as keyof typeof DurationType];
+  const durationType = IntervalType[duration as keyof typeof IntervalType];
   if (!durationType) {
     throw createHttpError(400, "duration type isn't supported");
   }

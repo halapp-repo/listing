@@ -4,7 +4,7 @@ import { S3CreateEvent, SQSEvent } from "aws-lambda";
 import { PriceExcelService } from "../services/price-excel.service";
 import PriceRepository from "../repositories/price.repository";
 import { LocationType } from "../models/location-type";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
 import { diContainer } from "../core/di-registry";
 import { S3Service } from "../services/s3.service";
 
