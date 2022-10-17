@@ -39,12 +39,12 @@ export class PriceService {
     });
     console.log(`${prices.length} # of prices found `);
     if (!isToday) {
-      return prices;
+      return this.getNewestPrices(prices);
     }
-    // Set Increase
-    const todaysPrices = prices
-      .filter((p) => p.isSelectedDatePrice(today))
-      .filter((p) => p.Price > 0);
+    // Set Increase Percentage
+    const todaysPrices = this.getNewestPrices(
+      prices.filter((p) => p.isSelectedDatePrice(today))
+    );
     const yesterdayPrices = [...prices].filter((p) =>
       p.isSelectedDatePrice(yesterday)
     );
@@ -52,38 +52,29 @@ export class PriceService {
       const yesterdayNewestPrice: number =
         yesterdayPrices
           .filter((yp) => yp.ProductId == p.ProductId)
-          .sort(getComparator("desc", "TS"))?.[0].Price || 0;
+          .sort(getComparator("desc", "TS"))[0]?.Price || 0;
       p.setIncrease(yesterdayNewestPrice);
     });
+    // Get Newest Price
     return todaysPrices;
-
-    // // Set Price Increase
-    // Object.values(this.groupByProduct(prices)).forEach(
-    //   (pricesByProductId: Price[]) => {
-    //     const todaysPrices = prices.filter((p) => p.isSelectedDatePrice(today));
-    //     const yesterdayPrices = prices.filter((p) =>
-    //       p.isSelectedDatePrice(yesterday)
-    //     );
-    //     const yesterdayNewestPrice =
-    //       [...yesterdayPrices].sort(getComparator("desc", "TS"))?.[0].Price ||
-    //       0;
-    //     todaysPrices.forEach((p) => p.setIncrease(yesterdayNewestPrice));
-    //   }
-    // );
-    // const todaysPrices = prices.filter((p) => p.isSelectedDatePrice(today));
-    // console.log(`${todaysPrices.length} of todays prices are returning`);
-    // return todaysPrices;
   }
-  // public groupByProduct(prices: Price[]): PriceGroup {
-  //   return prices.reduce((group: PriceGroup, price: Price) => {
-  //     //Group Prices by ProductId
-  //     const { ProductId } = price;
-  //     if (group[ProductId]) {
-  //       group[ProductId].push(price);
-  //     } else {
-  //       group[ProductId] = [price];
-  //     }
-  //     return group;
-  //   }, {});
-  // }
+  public getNewestPrices(prices: Price[]): Price[] {
+    return Object.values(this.groupByProduct(prices))
+      .map((pricesByProductId: Price[]) => {
+        return pricesByProductId.sort(getComparator("desc", "TS"))[0];
+      })
+      .filter((p) => p.Price > 0);
+  }
+  public groupByProduct(prices: Price[]): PriceGroup {
+    return prices.reduce((group: PriceGroup, price: Price) => {
+      //Group Prices by ProductId
+      const { ProductId } = price;
+      if (group[ProductId]) {
+        group[ProductId].push(price);
+      } else {
+        group[ProductId] = [price];
+      }
+      return group;
+    }, {});
+  }
 }

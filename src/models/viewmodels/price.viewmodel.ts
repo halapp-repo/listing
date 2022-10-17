@@ -3,6 +3,6 @@ export interface PriceViewModel {
   TS: string;
   Price: number;
   Unit: string;
-  IsToday: boolean;
+  IsToday?: boolean;
   Increase?: number;
 }

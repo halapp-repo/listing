@@ -5,14 +5,14 @@ import { trMoment } from "../utils/timezone";
 
 export class PriceToPriceVMMapper extends IMapper<Price, PriceViewModel> {
   toDTO(arg: Price): PriceViewModel {
-    const today = trMoment();
+    const isToday = arg.isSelectedDatePrice(trMoment());
     return {
       Price: arg.Price,
       ProductId: arg.ProductId,
       TS: arg.TS.format(),
       Unit: arg.Unit,
-      Increase: arg.isSelectedDatePrice(today) ? arg.Increase : undefined,
-      IsToday: arg.isSelectedDatePrice(today),
+      Increase: isToday ? arg.Increase : undefined,
+      IsToday: isToday ? true : undefined,
     };
   }
   toModel(arg: PriceViewModel): Price {
