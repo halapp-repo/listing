@@ -3,7 +3,7 @@ import { PriceInputDTO } from "../models/dtos/price.input.dto";
 import { IMapper } from "./base.mapper";
 import { Inventory } from "../models/inventory";
 import { InventoryInputDTO } from "../models/dtos/inventory.input.dto";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
 import { InventoryType } from "../models/inventory-type";
 
 export class InvToInvInputDTOMapper extends IMapper<

@@ -1,7 +1,9 @@
+import { plainToClass } from "class-transformer";
 import { PriceRepositoryDTO } from "../models/dtos/price.repository.dto";
 import { LocationType } from "../models/location-type";
 import { Price } from "../models/price";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
+import { trMoment } from "../utils/timezone";
 import { IMapper } from "./base.mapper";
 
 export class PriceToPriceRepositoryDTOMapper extends IMapper<
@@ -17,7 +19,7 @@ export class PriceToPriceRepositoryDTOMapper extends IMapper<
       ProductId: duration
         ? `${productId}#${location}#${type}#${duration}`
         : `${productId}#${location}#${type}`,
-      TS: arg.TS,
+      TS: arg.TS.format(),
       Location: `${location}#${type}`,
       Price: arg.Price,
       Unit: arg.Unit,
@@ -30,7 +32,7 @@ export class PriceToPriceRepositoryDTOMapper extends IMapper<
     if (!locationType || !productType) {
       throw new Error("undefined locationType & productType");
     }
-    return {
+    return plainToClass(Price, {
       ProductId: productId,
       Location: locationType,
       Type: productType,
@@ -38,6 +40,6 @@ export class PriceToPriceRepositoryDTOMapper extends IMapper<
       Unit: arg.Unit,
       TS: arg.TS,
       Duration: duration,
-    } as Price;
+    });
   }
 }

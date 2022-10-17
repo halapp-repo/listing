@@ -11,10 +11,12 @@ import {
 } from "aws-lambda";
 import PriceRepository from "../repositories/price.repository";
 import { LocationType } from "../models/location-type";
-import { ProductType } from "../models/product-type-type";
+import { ProductType } from "../models/product-type";
 import { PriceToPriceVMMapper as PriceVMMapper } from "../mappers/price-to-price-vm.mapper";
 import { diContainer } from "../core/di-registry";
 import createHttpError = require("http-errors");
+import { PriceService } from "../services/price.service";
+import { trMoment } from "../utils/timezone";
 
 const lambdaHandler = async function (
   event: APIGatewayProxyEventV2,
@@ -22,13 +24,14 @@ const lambdaHandler = async function (
 ): Promise<APIGatewayProxyResult> {
   const location = getLocation(event.queryStringParameters?.location);
   const type = getProductType(event.queryStringParameters?.type);
-  const [from, to] = getDateInterval(
-    event.queryStringParameters?.from_date,
-    event.queryStringParameters?.to_date
-  );
+  const date = getDate(event.queryStringParameters?.date);
 
-  const repo = diContainer.resolve<PriceRepository>("PriceRepository");
-  const prices = await repo.getPrices(from, to, location, type);
+  const priceService = diContainer.resolve(PriceService);
+  const prices = await priceService.getPrices({
+    date: date,
+    location: location,
+    type: type,
+  });
   return {
     statusCode: 200,
     body: JSON.stringify(new PriceVMMapper().toListDTO(prices)),
@@ -38,25 +41,15 @@ const lambdaHandler = async function (
   };
 };
 
-function getDateInterval(fromDate?: string, toDate?: string): [string, string] {
-  let from: string;
-  let to: string;
-  if (!fromDate) {
-    from = moment
-      .tz("Europe/Istanbul")
-      .subtract(1, "d")
-      .startOf("day")
-      .format();
+function getDate(date?: string): moment.Moment {
+  let selectedDate: moment.Moment;
+  if (!date) {
+    selectedDate = trMoment();
   } else {
-    from = moment.tz(fromDate, "Europe/Istanbul").startOf("day").format();
+    selectedDate = trMoment(date);
   }
-  if (!toDate) {
-    to = moment.tz("Europe/Istanbul").endOf("day").format();
-  } else {
-    to = moment.tz(toDate, "Europe/Istanbul").endOf("day").format();
-  }
-  console.log("From & To Date :", JSON.stringify({ from, to }, null, 2));
-  return [from, to];
+  console.log("Selected Date :", selectedDate.format());
+  return selectedDate;
 }
 function getLocation(location: string | undefined): LocationType {
   if (!location) {
