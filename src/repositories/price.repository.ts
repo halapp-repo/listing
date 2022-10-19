@@ -5,6 +5,7 @@ import { PriceRepositoryDTO } from "../models/dtos/price.repository.dto";
 import { IntervalType } from "../models/interval-type";
 import { LocationType } from "../models/location-type";
 import { Price } from "../models/price";
+import { PriceStatusType } from "../models/price-status-type";
 import { ProductType } from "../models/product-type";
 import { chuckArray } from "../utils/array.utils";
 import { DynamoStore } from "./dynamo-store";
@@ -19,12 +20,14 @@ export default class PriceRepository {
     @inject("PrToPrRepoMapper")
     private mapper: IMapper<Price, PriceRepositoryDTO>
   ) {}
-  async createPrices(prices: Price[]): Promise<void> {
+  async createPrices(prices: Price[], isActive: boolean): Promise<void> {
     console.log("Inserting Price Entries");
     if (!prices || prices.length == 0) {
       console.warn("There Is No Price To Enter");
       return;
     }
+    prices.forEach((p) => p.setActive(isActive));
+
     const priceDtoList = this.mapper.toListDTO(prices);
     for (const chunk of chuckArray(priceDtoList, this.chunkSize)) {
       const priceEntries = chunk.map((entry) =>
@@ -64,6 +67,28 @@ export default class PriceRepository {
         ":Location": `${location}#${type}`,
         ":From": fromDate,
         ":To": toDate,
+      },
+    });
+    const { Items } = await this.store.dynamoClient.send(command);
+    return this.convertResultToModel(Items);
+  }
+  async getActivePrices({
+    location,
+    type,
+  }: {
+    location: LocationType;
+    type: ProductType;
+  }): Promise<Price[]> {
+    console.log("Fetching Active Prices");
+    const command = new QueryCommand({
+      TableName: this.tableName,
+      IndexName: "PriceActiveIndex",
+      KeyConditionExpression: "#Active = :Active",
+      ExpressionAttributeNames: {
+        "#Active": "Active",
+      },
+      ExpressionAttributeValues: {
+        ":Active": `${PriceStatusType.active}#${location}#${type}`,
       },
     });
     const { Items } = await this.store.dynamoClient.send(command);
@@ -112,6 +137,7 @@ export default class PriceRepository {
             TS: i["TS"],
             Price: i["Price"],
             Unit: i["Unit"],
+            Active: i["Active"],
           }
       )
     );

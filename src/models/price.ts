@@ -19,6 +19,7 @@ export class Price {
   Type: ProductType;
   Duration?: string;
   Increase?: number;
+  Active?: boolean;
 
   isSelectedDatePrice(selectedDate: moment.Moment): boolean {
     return this.TS.isBetween(
@@ -33,5 +34,8 @@ export class Price {
     this.Increase = Math.round(
       ((this.Price - previousPrice) / previousPrice) * 100
     );
+  }
+  setActive(status: boolean) {
+    this.Active = status;
   }
 }

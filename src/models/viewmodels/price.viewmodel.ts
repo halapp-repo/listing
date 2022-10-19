@@ -5,4 +5,5 @@ export interface PriceViewModel {
   Unit: string;
   IsToday?: boolean;
   Increase?: number;
+  IsActive?: boolean;
 }

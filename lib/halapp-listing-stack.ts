@@ -120,7 +120,7 @@ export class HalappListingStack extends cdk.Stack {
         batchSize: 1,
       })
     );
-    priceTable.grantWriteData(pricesUpdateHandler);
+    priceTable.grantReadWriteData(pricesUpdateHandler);
     pricebucket.grantReadWrite(pricesUpdateHandler);
 
     //
@@ -448,6 +448,14 @@ export class HalappListingStack extends cdk.Stack {
       },
       sortKey: {
         name: "TS",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+    priceTable.addGlobalSecondaryIndex({
+      indexName: "PriceActiveIndex",
+      partitionKey: {
+        name: "Active",
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,
