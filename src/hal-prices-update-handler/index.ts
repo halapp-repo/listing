@@ -33,10 +33,17 @@ export async function handler(event: SQSEvent) {
       excelService.setProductType(productType);
       excelService.setTimeStamp(currentTimestamp);
       const fileStream = await s3Service.readObject(Bucket, Key);
+      // Get Active Prices for Previous Day
+      const oldPrices = await repo.getActivePrices({
+        location: locationType,
+        type: productType,
+      });
+      // Make them as achive
+      await repo.createPrices(oldPrices, false);
       // Process File
       const priceList = await excelService.read(fileStream);
       // Insert to DynamoDB
-      await repo.createPrices(priceList);
+      await repo.createPrices(priceList, true);
       // Move File To Archive
       await s3Service.moveObject(
         Bucket,

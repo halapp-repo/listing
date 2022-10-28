@@ -27,36 +27,39 @@ export class PriceService {
     type: ProductType;
   }): Promise<Price[]> {
     const today = trMoment();
-    const yesterday = trMoment().subtract(1, "d");
     const isToday: boolean = date.isSameOrAfter(today, "day");
-    const prices = await this.repo.getPrices({
-      fromDate: isToday
-        ? date.clone().subtract(1, "day").startOf("day").format()
-        : date.clone().startOf("day").format(),
-      toDate: date.clone().endOf("day").format(),
+
+    if (!isToday) {
+      const prices = await this.repo.getPrices({
+        fromDate: date.clone().startOf("day").format(),
+        toDate: date.clone().endOf("day").format(),
+        location: location,
+        type: type,
+      });
+      console.log(`${prices.length} # of prices found `);
+      return this.getNewestPrices(prices);
+    }
+    const activePrices = await this.repo.getActivePrices({
       location: location,
       type: type,
     });
-    console.log(`${prices.length} # of prices found `);
-    if (!isToday) {
-      return this.getNewestPrices(prices);
-    }
+    const yesterdayPrices = await this.repo.getPrices({
+      fromDate: date.clone().subtract(1, "d").startOf("day").format(),
+      toDate: date.clone().subtract(1, "d").endOf("day").format(),
+      location: location,
+      type: type,
+    });
+
     // Set Increase Percentage
-    const todaysPrices = this.getNewestPrices(
-      prices.filter((p) => p.isSelectedDatePrice(today))
-    );
-    const yesterdayPrices = [...prices].filter((p) =>
-      p.isSelectedDatePrice(yesterday)
-    );
-    todaysPrices.forEach((p) => {
-      const yesterdayNewestPrice: number =
-        yesterdayPrices
-          .filter((yp) => yp.ProductId == p.ProductId)
-          .sort(getComparator("desc", "TS"))[0]?.Price || 0;
-      p.setIncrease(yesterdayNewestPrice);
+    const yesterdayNewestPrice = this.getNewestPrices(yesterdayPrices);
+    activePrices.forEach((p) => {
+      const yp: number =
+        yesterdayNewestPrice.filter((yp) => yp.ProductId == p.ProductId)[0]
+          ?.Price || 0;
+      p.setIncrease(yp);
     });
     // Get Newest Price
-    return todaysPrices;
+    return activePrices;
   }
   public getNewestPrices(prices: Price[]): Price[] {
     return Object.values(this.groupByProduct(prices))

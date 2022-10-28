@@ -13,6 +13,7 @@ export class PriceToPriceVMMapper extends IMapper<Price, PriceViewModel> {
       Unit: arg.Unit,
       Increase: isToday ? arg.Increase : undefined,
       IsToday: isToday ? true : undefined,
+      IsActive: arg.Active ? true : undefined,
     };
   }
   toModel(arg: PriceViewModel): Price {
