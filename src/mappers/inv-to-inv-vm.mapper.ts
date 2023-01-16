@@ -1,21 +1,21 @@
 import { IMapper } from "./base.mapper";
 import { Inventory } from "../models/inventory";
-import { InventoryViewModel } from "../models/viewmodels/inventory.viewmodel";
+import { InventoryVM } from "@halapp/common";
 
-export class InvToInvVMMapper extends IMapper<Inventory, InventoryViewModel> {
-  toDTO(arg: Inventory): InventoryViewModel {
+export class InvToInvVMMapper extends IMapper<Inventory, InventoryVM> {
+  toDTO(arg: Inventory): InventoryVM {
     return {
       Name: arg.Name,
       Type: arg.Type,
       ImageUrl: arg.ImageUrl,
       ProductId: arg.ProductId,
       InventoryType: arg.InventoryType,
-    };
+    } as InventoryVM;
   }
-  toModel(arg: InventoryViewModel): Inventory {
+  toModel(arg: InventoryVM): Inventory {
     throw new Error("Not Implemented");
   }
-  toListModel(arg: InventoryViewModel[]): Inventory[] {
+  toListModel(arg: InventoryVM[]): Inventory[] {
     throw new Error("Not Implemented");
   }
 }
