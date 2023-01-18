@@ -1,32 +1,31 @@
-import "reflect-metadata";
-import * as moment from "moment-timezone";
-import { S3CreateEvent, SQSEvent } from "aws-lambda";
-import { PriceExcelService } from "../services/price-excel.service";
-import PriceRepository from "../repositories/price.repository";
-import { LocationType } from "../models/location-type";
-import { ProductType } from "../models/product-type";
-import { diContainer } from "../core/di-registry";
-import { S3Service } from "../services/s3.service";
+import 'reflect-metadata';
+import 'source-map-support/register';
+import * as moment from 'moment-timezone';
+import { S3CreateEvent, SQSEvent } from 'aws-lambda';
+import { PriceExcelService } from '../services/price-excel.service';
+import PriceRepository from '../repositories/price.repository';
+import { LocationType } from '../models/location-type';
+import { ProductType } from '../models/product-type';
+import { diContainer } from '../core/di-registry';
+import { S3Service } from '../services/s3.service';
 
 export async function handler(event: SQSEvent) {
   console.log(JSON.stringify(event, null, 2));
-  const currentTimestamp = moment.tz("Europe/Istanbul").format();
+  const currentTimestamp = moment.tz('Europe/Istanbul').format();
   console.log(`HalPricesUpdateHandler is called at ${currentTimestamp}`);
   const repo = diContainer.resolve(PriceRepository);
   const excelService = diContainer.resolve(PriceExcelService);
   const s3Service = diContainer.resolve(S3Service);
   for (const record of event.Records) {
     const { body } = record;
-    for (const recordInfo of s3Service.parseS3CreateEvent(
-      JSON.parse(body) as S3CreateEvent
-    )) {
+    for (const recordInfo of s3Service.parseS3CreateEvent(JSON.parse(body) as S3CreateEvent)) {
       const {
         bucket: Bucket,
         fileExtension: FileExtension,
         fileName: FileName,
-        key: Key,
+        key: Key
       } = recordInfo;
-      const [location, type] = Key.split("/");
+      const [location, type] = Key.split('/');
       const locationType = LocationType[location as keyof typeof LocationType];
       const productType = ProductType[type as keyof typeof ProductType];
       excelService.setLocationType(locationType);
@@ -36,7 +35,7 @@ export async function handler(event: SQSEvent) {
       // Get Active Prices for Previous Day
       const oldPrices = await repo.getActivePrices({
         location: locationType,
-        type: productType,
+        type: productType
       });
       // Make them as achive
       await repo.createPrices(oldPrices, false);
