@@ -1,42 +1,38 @@
-import * as cdk from "aws-cdk-lib";
-import { Construct } from "constructs";
-import * as sqs from "aws-cdk-lib/aws-sqs";
-import * as iam from "aws-cdk-lib/aws-iam";
-import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import * as s3 from "aws-cdk-lib/aws-s3";
-import * as s3n from "aws-cdk-lib/aws-s3-notifications";
-import { NodejsFunction, LogLevel } from "aws-cdk-lib/aws-lambda-nodejs";
-import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as path from "path";
-import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import * as apigateway from "aws-cdk-lib/aws-apigateway";
-
-import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import { NodejsFunction, LogLevel } from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import getConfig from '../config';
+import { BuildConfig } from './build-config';
+import * as apiGateway from '@aws-cdk/aws-apigatewayv2-alpha';
+import { HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
+import * as apiGatewayIntegrations from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 
 export class HalappListingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+    //*****************
+    // BUILD CONFIG
+    //******************
+    const buildConfig = getConfig(scope as cdk.App);
     // *************
-    // Create Queue
+    // Create SQS
     // *************
-    const inventoriesUpdateQueue = this.createInventoriesUpdateQueue();
-    const pricesUpdateQueue = this.createPricesUpdateQueue();
+    const inventoriesUpdateQueue = this.createInventoriesUpdateQueue(buildConfig);
+    const pricesUpdateQueue = this.createPricesUpdateQueue(buildConfig);
     // **************
     // Create Bucket
     // **************
-    const inventoryBucket = this.createInventoryBucket();
-    inventoryBucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED,
-      new s3n.SqsDestination(inventoriesUpdateQueue)
-    );
-    const pricebucket = this.createPriceBucket();
-    pricebucket.addEventNotification(
-      s3.EventType.OBJECT_CREATED,
-      new s3n.SqsDestination(pricesUpdateQueue),
-      {
-        prefix: "istanbul/produce/input/",
-      }
-    );
+    const inventoryBucket = this.createInventoryBucket(buildConfig, inventoriesUpdateQueue);
+    const pricebucket = this.createPriceBucket(buildConfig, pricesUpdateQueue);
     // **************
     // Create Group
     // **************
@@ -49,278 +45,104 @@ export class HalappListingStack extends cdk.Stack {
     // ********************
     // Create API Gateway
     // ********************
-    const listingApi = this.createListingApiGateway();
-    const listingApiValidator = listingApi.addRequestValidator(
-      "HalAppListingApiValidator",
-      {
-        requestValidatorName: "HalAppListingApiValidator",
-        validateRequestParameters: true,
-      }
-    );
+    const listingApi = this.createListingApiGateway(buildConfig);
     // ***************************
-    // Create Lambda Handler
+    // Create LAMBDA Handler
     // ***************************
     //
     // ****Create SQS Handler Lambda****
     //
-    const inventoriesUpdateHandler = new NodejsFunction(
-      this,
-      "SqsHalInventoriesUpdateHandler",
-      {
-        memorySize: 1024,
-        timeout: cdk.Duration.minutes(1),
-        functionName: "SqsHalInventoriesUpdateHandler",
-        runtime: lambda.Runtime.NODEJS_16_X,
-        handler: "handler",
-        entry: path.join(
-          __dirname,
-          `/../src/hal-inventories-update-handler/index.ts`
-        ),
-        bundling: {
-          target: "es2020",
-          keepNames: true,
-          logLevel: LogLevel.INFO,
-          sourceMap: true,
-          minify: true,
-        },
-      }
+    this.createInventoriesUpdatedHandler(
+      buildConfig,
+      inventoriesUpdateQueue,
+      inventoryTable,
+      inventoryBucket
     );
-    inventoriesUpdateHandler.addEventSource(
-      new SqsEventSource(inventoriesUpdateQueue, {
-        batchSize: 1,
-      })
-    );
-    inventoryTable.grantReadWriteData(inventoriesUpdateHandler);
-    inventoryBucket.grantReadWrite(inventoriesUpdateHandler);
-
-    const pricesUpdateHandler = new NodejsFunction(
-      this,
-      "SqsHalPricesUpdateHandler",
-      {
-        memorySize: 1024,
-        timeout: cdk.Duration.minutes(1),
-        functionName: "SqsHalPricesUpdateHandler",
-        runtime: lambda.Runtime.NODEJS_16_X,
-        handler: "handler",
-        entry: path.join(
-          __dirname,
-          `/../src/hal-prices-update-handler/index.ts`
-        ),
-        bundling: {
-          target: "es2020",
-          keepNames: true,
-          logLevel: LogLevel.INFO,
-          sourceMap: true,
-          minify: true,
-        },
-      }
-    );
-    pricesUpdateHandler.addEventSource(
-      new SqsEventSource(pricesUpdateQueue, {
-        batchSize: 1,
-      })
-    );
-    priceTable.grantReadWriteData(pricesUpdateHandler);
-    pricebucket.grantReadWrite(pricesUpdateHandler);
-
+    this.createPricesUpdateHandler(buildConfig, pricesUpdateQueue, priceTable, pricebucket);
     //
     // ****PRODUCTS API Handler****
     //
-    const productsResource = listingApi.root.addResource("products");
-    const productResource = productsResource.addResource("{productId}");
-    const productPricesResource = productResource.addResource("prices");
-    const getProductPricesHandler = new NodejsFunction(
-      this,
-      "ListingGetProductPricesHandler",
-      {
-        memorySize: 1024,
-        runtime: lambda.Runtime.NODEJS_16_X,
-        functionName: "ListingGetProductPricesHandler",
-        handler: "handler",
-        timeout: cdk.Duration.seconds(15),
-        entry: path.join(
-          __dirname,
-          `/../src/listing-get-product-prices-handler/index.ts`
-        ),
-        bundling: {
-          target: "es2020",
-          keepNames: true,
-          logLevel: LogLevel.INFO,
-          sourceMap: true,
-          minify: true,
-        },
-      }
-    );
-    productPricesResource.addMethod(
-      "GET",
-      new apigateway.LambdaIntegration(getProductPricesHandler, {
-        proxy: true,
-      }),
-      {
-        requestParameters: {
-          "method.request.querystring.duration": true,
-          "method.request.querystring.location": true,
-          "method.request.querystring.type": true,
-          "method.request.querystring.from_date": true,
-          "method.request.querystring.to_date": false,
-        },
-        requestValidator: listingApiValidator,
-      }
-    );
-    priceTable.grantReadData(getProductPricesHandler);
+    this.createGetProductPricesHandler(buildConfig, listingApi, priceTable);
     //
     // ****INVENTORY API Handler****
     //
-    const inventoriesResource = listingApi.root.addResource("inventories");
-    const getInventoriesHandler = new NodejsFunction(
-      this,
-      "ListingGetInventoriesHandler",
-      {
-        memorySize: 1024,
-        runtime: lambda.Runtime.NODEJS_16_X,
-        functionName: "ListingGetInventoriesHandler",
-        handler: "handler",
-        timeout: cdk.Duration.seconds(15),
-        entry: path.join(
-          __dirname,
-          `/../src/listing-get-inventories-handler/index.ts`
-        ),
-        bundling: {
-          target: "es2020",
-          keepNames: true,
-          logLevel: LogLevel.INFO,
-          sourceMap: true,
-          minify: true,
-        },
-      }
-    );
-    inventoriesResource.addMethod(
-      "GET",
-      new apigateway.LambdaIntegration(getInventoriesHandler, {
-        proxy: true,
-      })
-    );
-    inventoryTable.grantReadData(getInventoriesHandler);
-
+    this.createGetInventoriesHandler(buildConfig, listingApi, inventoryTable);
     //
-    // PRICES API Handler
+    // ****PRICES API Handler****
     //
-    const pricesResource = listingApi.root.addResource("prices");
-    const getPricesHandler = new NodejsFunction(
-      this,
-      "ListingGetPricesHandler",
-      {
-        memorySize: 1024,
-        runtime: lambda.Runtime.NODEJS_16_X,
-        functionName: "ListingGetPricesHandler",
-        handler: "handler",
-        timeout: cdk.Duration.seconds(15),
-        entry: path.join(
-          __dirname,
-          `/../src/listing-get-prices-handler/index.ts`
-        ),
-        bundling: {
-          target: "es2020",
-          keepNames: true,
-          logLevel: LogLevel.INFO,
-          sourceMap: true,
-          minify: true,
-        },
-      }
-    );
-    pricesResource.addMethod(
-      "GET",
-      new apigateway.LambdaIntegration(getPricesHandler, { proxy: true }),
-      {
-        requestParameters: {
-          "method.request.querystring.location": true,
-          "method.request.querystring.type": true,
-          "method.request.querystring.date": false,
-        },
-        requestValidator: listingApiValidator,
-      }
-    );
-    priceTable.grantReadData(getPricesHandler);
-    // ********************
-    // Create EventBridge
-    // ********************
+    this.createGetPricesHandler(buildConfig, listingApi, priceTable);
   }
-  createInventoriesUpdateQueue(): cdk.aws_sqs.Queue {
-    const inventoriesUpdateDLQ = new sqs.Queue(
-      this,
-      "HalInventoriesUpdatesDLQ",
-      {
-        queueName: "HalInventoriesUpdatesDLQ",
-        retentionPeriod: cdk.Duration.hours(10),
+  createInventoriesUpdateQueue(buildConfig: BuildConfig): cdk.aws_sqs.Queue {
+    const inventoriesUpdateDLQ = new sqs.Queue(this, 'HalInventoriesUpdatesDLQ', {
+      queueName: `${buildConfig.SQSInventoriesUpdatedQueue}DLQ`,
+      retentionPeriod: cdk.Duration.hours(10)
+    });
+    const inventoriesUpdateQueue = new sqs.Queue(this, 'HalInventoriesUpdatesQueue', {
+      queueName: `${buildConfig.SQSInventoriesUpdatedQueue}`,
+      visibilityTimeout: cdk.Duration.minutes(2),
+      retentionPeriod: cdk.Duration.days(1),
+      deadLetterQueue: {
+        queue: inventoriesUpdateDLQ,
+        maxReceiveCount: 4
       }
-    );
-    const inventoriesUpdateQueue = new sqs.Queue(
-      this,
-      "HalInventoriesUpdatesQueue",
-      {
-        queueName: "HalInventoriesUpdatesQueue",
-        visibilityTimeout: cdk.Duration.minutes(2),
-        retentionPeriod: cdk.Duration.days(1),
-        deadLetterQueue: {
-          queue: inventoriesUpdateDLQ,
-          maxReceiveCount: 4,
-        },
-      }
-    );
+    });
     inventoriesUpdateQueue.addToResourcePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        principals: [new ServicePrincipal("s3.amazonaws.com")],
-        actions: ["sqs:SendMessage"],
+        principals: [new ServicePrincipal('s3.amazonaws.com')],
+        actions: ['sqs:SendMessage'],
         resources: [inventoriesUpdateQueue.queueArn],
         conditions: {
           StringEquals: {
-            "aws:SourceAccount": this.account,
+            'aws:SourceAccount': this.account
           },
           ArnLike: {
             // Allows all buckets to send notifications since we haven't created the bucket yet.
-            "aws:SourceArn": "arn:aws:s3:*:*:*",
-          },
-        },
+            'aws:SourceArn': 'arn:aws:s3:*:*:*'
+          }
+        }
       })
     );
     return inventoriesUpdateQueue;
   }
-  createPricesUpdateQueue(): cdk.aws_sqs.Queue {
-    const pricesUpdateDLQ = new sqs.Queue(this, "HalPricesUpdatesDLQ", {
-      queueName: "HalPricesUpdatesDLQ",
-      retentionPeriod: cdk.Duration.hours(10),
+  createPricesUpdateQueue(buildConfig: BuildConfig): cdk.aws_sqs.Queue {
+    const pricesUpdateDLQ = new sqs.Queue(this, 'HalPricesUpdatesDLQ', {
+      queueName: `${buildConfig.SQSPricesUpdatedQueue}DLQ`,
+      retentionPeriod: cdk.Duration.hours(10)
     });
-    const pricesUpdateQueue = new sqs.Queue(this, "HalPricesUpdatesQueue", {
-      queueName: "HalPricesUpdatesQueue",
+    const pricesUpdateQueue = new sqs.Queue(this, 'HalPricesUpdatesQueue', {
+      queueName: `${buildConfig.SQSPricesUpdatedQueue}`,
       visibilityTimeout: cdk.Duration.minutes(2),
       retentionPeriod: cdk.Duration.days(1),
       deadLetterQueue: {
         queue: pricesUpdateDLQ,
-        maxReceiveCount: 4,
-      },
+        maxReceiveCount: 4
+      }
     });
     pricesUpdateQueue.addToResourcePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        principals: [new ServicePrincipal("s3.amazonaws.com")],
-        actions: ["sqs:SendMessage"],
+        principals: [new ServicePrincipal('s3.amazonaws.com')],
+        actions: ['sqs:SendMessage'],
         resources: [pricesUpdateQueue.queueArn],
         conditions: {
           StringEquals: {
-            "aws:SourceAccount": this.account,
+            'aws:SourceAccount': this.account
           },
           ArnLike: {
             // Allows all buckets to send notifications since we haven't created the bucket yet.
-            "aws:SourceArn": "arn:aws:s3:*:*:*",
-          },
-        },
+            'aws:SourceArn': 'arn:aws:s3:*:*:*'
+          }
+        }
       })
     );
     return pricesUpdateQueue;
   }
-  createInventoryBucket(): cdk.aws_s3.Bucket {
-    const inventoryBucket = new s3.Bucket(this, "HalInventory", {
+  createInventoryBucket(
+    buildConfig: BuildConfig,
+    inventoryQueue: cdk.aws_sqs.Queue
+  ): cdk.aws_s3.Bucket {
+    const inventoryBucket = new s3.Bucket(this, 'HalInventory', {
       bucketName: `hal-inventory-${this.account}`,
       autoDeleteObjects: false,
       versioned: true,
@@ -329,20 +151,24 @@ export class HalappListingStack extends cdk.Stack {
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(60),
+              transitionAfter: cdk.Duration.days(60)
             },
             {
               storageClass: s3.StorageClass.GLACIER_INSTANT_RETRIEVAL,
-              transitionAfter: cdk.Duration.days(90),
-            },
-          ],
-        },
-      ],
+              transitionAfter: cdk.Duration.days(90)
+            }
+          ]
+        }
+      ]
     });
+    inventoryBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.SqsDestination(inventoryQueue)
+    );
     return inventoryBucket;
   }
-  createPriceBucket(): cdk.aws_s3.Bucket {
-    const pricebucket = new s3.Bucket(this, "HalPrice", {
+  createPriceBucket(buildConfig: BuildConfig, priceQueue: cdk.aws_sqs.Queue): cdk.aws_s3.Bucket {
+    const pricebucket = new s3.Bucket(this, 'HalPrice', {
       bucketName: `hal-price-${this.account}`,
       autoDeleteObjects: false,
       versioned: true,
@@ -351,121 +177,306 @@ export class HalappListingStack extends cdk.Stack {
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(60),
+              transitionAfter: cdk.Duration.days(60)
             },
             {
               storageClass: s3.StorageClass.GLACIER_INSTANT_RETRIEVAL,
-              transitionAfter: cdk.Duration.days(90),
-            },
-          ],
-        },
-      ],
+              transitionAfter: cdk.Duration.days(90)
+            }
+          ]
+        }
+      ]
     });
+    pricebucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.SqsDestination(priceQueue),
+      {
+        prefix: 'istanbul/produce/input/'
+      }
+    );
     return pricebucket;
   }
   createHalPriceGroup(pricebucket: cdk.aws_s3.Bucket): cdk.aws_iam.Group {
-    const group = new iam.Group(this, "HalPriceGroup", {
-      groupName: "HalPriceGroup",
+    const group = new iam.Group(this, 'HalPriceGroup', {
+      groupName: 'HalPriceGroup'
     });
     group.attachInlinePolicy(
-      new iam.Policy(this, "HalPriceGroupPolicy", {
+      new iam.Policy(this, 'HalPriceGroupPolicy', {
         statements: [
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["s3:GetBucketLocation", "s3:ListAllMyBuckets"],
-            resources: ["arn:aws:s3:::*"],
+            actions: ['s3:GetBucketLocation', 's3:ListAllMyBuckets'],
+            resources: ['arn:aws:s3:::*']
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["s3:ListBucket"],
-            resources: [pricebucket.bucketArn],
+            actions: ['s3:ListBucket'],
+            resources: [pricebucket.bucketArn]
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["s3:*Object"],
-            resources: [`${pricebucket.bucketArn}/*`],
+            actions: ['s3:*Object'],
+            resources: [`${pricebucket.bucketArn}/*`]
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.DENY,
-            actions: ["s3:DeleteObject"],
-            resources: [`${pricebucket.bucketArn}/*`],
+            actions: ['s3:DeleteObject'],
+            resources: [`${pricebucket.bucketArn}/*`]
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.DENY,
-            actions: ["s3:PutObject*"],
-            notResources: [
-              `${pricebucket.bucketArn}/*.xlsx`,
-              `${pricebucket.bucketArn}/*.xls`,
-            ],
+            actions: ['s3:PutObject*'],
+            notResources: [`${pricebucket.bucketArn}/*.xlsx`, `${pricebucket.bucketArn}/*.xls`]
           }),
           new iam.PolicyStatement({
             effect: iam.Effect.DENY,
-            actions: ["s3:PutObject*"],
-            notResources: [`${pricebucket.bucketArn}/istanbul/produce/input/*`],
-          }),
-        ],
+            actions: ['s3:PutObject*'],
+            notResources: [`${pricebucket.bucketArn}/istanbul/produce/input/*`]
+          })
+        ]
       })
     );
     return group;
   }
   createInventoryTable(): cdk.aws_dynamodb.Table {
-    const halInventoryTable = new dynamodb.Table(this, "HalInventoryTable", {
+    const halInventoryTable = new dynamodb.Table(this, 'HalInventoryTable', {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "HalInventory",
+      tableName: 'HalInventory',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       partitionKey: {
-        name: "InventoryType",
-        type: dynamodb.AttributeType.STRING,
+        name: 'InventoryType',
+        type: dynamodb.AttributeType.STRING
       },
       sortKey: {
-        name: "InventoryId",
-        type: dynamodb.AttributeType.STRING,
+        name: 'InventoryId',
+        type: dynamodb.AttributeType.STRING
       },
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: true
     });
     return halInventoryTable;
   }
   createPriceTable(): cdk.aws_dynamodb.Table {
-    const priceTable = new dynamodb.Table(this, "HalPricesDB", {
+    const priceTable = new dynamodb.Table(this, 'HalPricesDB', {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      tableName: "HalPrice",
+      tableName: 'HalPrice',
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       partitionKey: {
-        name: "ProductId",
-        type: dynamodb.AttributeType.STRING,
+        name: 'ProductId',
+        type: dynamodb.AttributeType.STRING
       },
       sortKey: {
-        name: "TS",
-        type: dynamodb.AttributeType.STRING,
+        name: 'TS',
+        type: dynamodb.AttributeType.STRING
       },
-      pointInTimeRecovery: true,
+      pointInTimeRecovery: true
     });
     priceTable.addGlobalSecondaryIndex({
-      indexName: "PriceLocationIndex",
+      indexName: 'PriceLocationIndex',
       partitionKey: {
-        name: "Location",
-        type: dynamodb.AttributeType.STRING,
+        name: 'Location',
+        type: dynamodb.AttributeType.STRING
       },
       sortKey: {
-        name: "TS",
-        type: dynamodb.AttributeType.STRING,
+        name: 'TS',
+        type: dynamodb.AttributeType.STRING
       },
-      projectionType: dynamodb.ProjectionType.ALL,
+      projectionType: dynamodb.ProjectionType.ALL
     });
     priceTable.addGlobalSecondaryIndex({
-      indexName: "PriceActiveIndex",
+      indexName: 'PriceActiveIndex',
       partitionKey: {
-        name: "Active",
-        type: dynamodb.AttributeType.STRING,
+        name: 'Active',
+        type: dynamodb.AttributeType.STRING
       },
-      projectionType: dynamodb.ProjectionType.ALL,
+      projectionType: dynamodb.ProjectionType.ALL
     });
     return priceTable;
   }
-  createListingApiGateway(): cdk.aws_apigateway.RestApi {
-    const listingApi = new apigateway.RestApi(this, "HalAppListingApi", {
-      description: "HalApp Api Gateway",
+  createListingApiGateway(buildConfig: BuildConfig): apiGateway.HttpApi {
+    const listingApi = new apiGateway.HttpApi(this, 'HalAppListingApi', {
+      description: 'HalApp Listing Api Gateway',
+      corsPreflight: {
+        allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+        allowMethods: [
+          apiGateway.CorsHttpMethod.GET,
+          apiGateway.CorsHttpMethod.HEAD,
+          apiGateway.CorsHttpMethod.OPTIONS
+        ],
+        allowOrigins:
+          buildConfig.Environment === 'PRODUCTION'
+            ? ['https://halapp.io', 'https://www.halapp.io']
+            : ['*']
+      }
     });
     return listingApi;
+  }
+  createInventoriesUpdatedHandler(
+    buildConfig: BuildConfig,
+    inventoriesUpdateQueue: cdk.aws_sqs.Queue,
+    inventoryTable: cdk.aws_dynamodb.Table,
+    inventoryBucket: cdk.aws_s3.Bucket
+  ) {
+    const inventoriesUpdateHandler = new NodejsFunction(this, 'SqsHalInventoriesUpdateHandler', {
+      memorySize: 1024,
+      timeout: cdk.Duration.minutes(1),
+      functionName: 'Listing-SqsInventoriesUpdateHandler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, `/../src/hal-inventories-update-handler/index.ts`),
+      bundling: {
+        target: 'es2020',
+        keepNames: true,
+        logLevel: LogLevel.INFO,
+        sourceMap: true,
+        minify: true
+      },
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        Region: buildConfig.Region
+      }
+    });
+    inventoriesUpdateHandler.addEventSource(
+      new SqsEventSource(inventoriesUpdateQueue, {
+        batchSize: 1
+      })
+    );
+    inventoryTable.grantReadWriteData(inventoriesUpdateHandler);
+    inventoryBucket.grantReadWrite(inventoriesUpdateHandler);
+  }
+  createPricesUpdateHandler(
+    buildConfig: BuildConfig,
+    pricesUpdateQueue: cdk.aws_sqs.Queue,
+    pricesTable: cdk.aws_dynamodb.Table,
+    priceBucket: cdk.aws_s3.Bucket
+  ) {
+    const pricesUpdateHandler = new NodejsFunction(this, 'SqsHalPricesUpdateHandler', {
+      memorySize: 1024,
+      timeout: cdk.Duration.minutes(1),
+      functionName: 'Listing-SqsPricesUpdateHandler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, `/../src/hal-prices-update-handler/index.ts`),
+      bundling: {
+        target: 'es2020',
+        keepNames: true,
+        logLevel: LogLevel.INFO,
+        sourceMap: true,
+        minify: true
+      },
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        Region: buildConfig.Region
+      }
+    });
+    pricesUpdateHandler.addEventSource(
+      new SqsEventSource(pricesUpdateQueue, {
+        batchSize: 1
+      })
+    );
+    pricesTable.grantReadWriteData(pricesUpdateHandler);
+    priceBucket.grantReadWrite(pricesUpdateHandler);
+  }
+  createGetProductPricesHandler(
+    buildConfig: BuildConfig,
+    listingApi: apiGateway.HttpApi,
+    pricesTable: cdk.aws_dynamodb.Table
+  ) {
+    const getProductPricesHandler = new NodejsFunction(this, 'ListingGetProductPricesHandler', {
+      memorySize: 1024,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      functionName: 'Listing-GetProductPricesHandler',
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(15),
+      entry: path.join(__dirname, `/../src/listing-get-product-prices-handler/index.ts`),
+      bundling: {
+        target: 'es2020',
+        keepNames: true,
+        logLevel: LogLevel.INFO,
+        sourceMap: true,
+        minify: true
+      },
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        Region: buildConfig.Region
+      }
+    });
+    listingApi.addRoutes({
+      methods: [HttpMethod.GET],
+      integration: new apiGatewayIntegrations.HttpLambdaIntegration(
+        'getProductPriceHandlerIntegration',
+        getProductPricesHandler
+      ),
+      path: '/products/{productId}/prices'
+    });
+    pricesTable.grantReadData(getProductPricesHandler);
+    return getProductPricesHandler;
+  }
+  createGetInventoriesHandler(
+    buildConfig: BuildConfig,
+    listingApi: apiGateway.HttpApi,
+    inventoryTable: cdk.aws_dynamodb.Table
+  ) {
+    const getInventoriesHandler = new NodejsFunction(this, 'ListingGetInventoriesHandler', {
+      memorySize: 1024,
+      runtime: lambda.Runtime.NODEJS_16_X,
+      functionName: 'Listing-GetInventoriesHandler',
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(15),
+      entry: path.join(__dirname, `/../src/listing-get-inventories-handler/index.ts`),
+      bundling: {
+        target: 'es2020',
+        keepNames: true,
+        logLevel: LogLevel.INFO,
+        sourceMap: true,
+        minify: true
+      },
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        Region: buildConfig.Region
+      }
+    });
+    listingApi.addRoutes({
+      methods: [HttpMethod.GET],
+      integration: new apiGatewayIntegrations.HttpLambdaIntegration(
+        'getInventoryHandlerIntegration',
+        getInventoriesHandler
+      ),
+      path: '/inventories'
+    });
+    inventoryTable.grantReadData(getInventoriesHandler);
+  }
+  createGetPricesHandler(
+    buildConfig: BuildConfig,
+    listingApi: apiGateway.HttpApi,
+    pricesTable: cdk.aws_dynamodb.Table
+  ) {
+    const getPricesHandler = new NodejsFunction(this, 'ListingGetPricesHandler', {
+      memorySize: 1024,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      functionName: 'Listing-GetPricesHandler',
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(15),
+      entry: path.join(__dirname, `/../src/listing-get-prices-handler/index.ts`),
+      bundling: {
+        target: 'es2020',
+        keepNames: true,
+        logLevel: LogLevel.INFO,
+        sourceMap: true,
+        minify: true
+      },
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+        Region: buildConfig.Region
+      }
+    });
+    listingApi.addRoutes({
+      methods: [HttpMethod.GET],
+      integration: new apiGatewayIntegrations.HttpLambdaIntegration(
+        'getPricesHandlerIntegration',
+        getPricesHandler
+      ),
+      path: '/prices'
+    });
+    pricesTable.grantReadData(getPricesHandler);
   }
 }

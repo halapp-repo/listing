@@ -1,9 +1,9 @@
-import { Price } from "../models/price";
-import { PriceInputDTO } from "../models/dtos/price.input.dto";
-import { IMapper } from "./base.mapper";
-import { LocationType } from "../models/location-type";
-import { ProductType } from "../models/product-type";
-import { plainToClass } from "class-transformer";
+import { Price } from '../models/price';
+import { PriceInputDTO } from '../models/dtos/price.input.dto';
+import { IMapper } from './base.mapper';
+import { LocationType } from '../models/location-type';
+import { ProductType } from '../models/product-type';
+import { plainToClass } from 'class-transformer';
 
 export class PriceToPriceInputDTOMapper extends IMapper<Price, PriceInputDTO> {
   private location: LocationType;
@@ -19,14 +19,14 @@ export class PriceToPriceInputDTOMapper extends IMapper<Price, PriceInputDTO> {
     this.timestamp = timeStamp;
   }
   toDTO(arg: Price): PriceInputDTO {
-    throw new Error("Not Implemented");
+    throw new Error('Not Implemented');
   }
   toListDTO(arg: Price[]): PriceInputDTO[] {
-    throw new Error("Not Implemented");
+    throw new Error('Not Implemented');
   }
   toModel(arg: PriceInputDTO): Price {
     if (!this.location || !this.type || !this.timestamp) {
-      throw new Error("Mapper is not set");
+      throw new Error('Mapper is not set');
     }
     return plainToClass(Price, {
       Location: this.location,
@@ -34,7 +34,7 @@ export class PriceToPriceInputDTOMapper extends IMapper<Price, PriceInputDTO> {
       ProductId: arg.ProductId,
       TS: this.timestamp,
       Type: this.type,
-      Unit: arg.Unit,
+      Unit: arg.Unit
     });
   }
 }
