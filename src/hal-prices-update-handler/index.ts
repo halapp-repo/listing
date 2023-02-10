@@ -4,8 +4,7 @@ import * as moment from 'moment-timezone';
 import { S3CreateEvent, SQSEvent } from 'aws-lambda';
 import { PriceExcelService } from '../services/price-excel.service';
 import PriceRepository from '../repositories/price.repository';
-import { LocationType } from '../models/location-type';
-import { ProductType } from '../models/product-type';
+import { CityType, ProductType } from '@halapp/common';
 import { diContainer } from '../core/di-registry';
 import { S3Service } from '../services/s3.service';
 
@@ -26,15 +25,15 @@ export async function handler(event: SQSEvent) {
         key: Key
       } = recordInfo;
       const [location, type] = Key.split('/');
-      const locationType = LocationType[location as keyof typeof LocationType];
+      const cityType = CityType[location as keyof typeof CityType];
       const productType = ProductType[type as keyof typeof ProductType];
-      excelService.setLocationType(locationType);
+      excelService.setCityType(cityType);
       excelService.setProductType(productType);
       excelService.setTimeStamp(currentTimestamp);
       const fileStream = await s3Service.readObject(Bucket, Key);
       // Get Active Prices for Previous Day
       const oldPrices = await repo.getActivePrices({
-        location: locationType,
+        location: cityType,
         type: productType
       });
       // Make them as achive
@@ -47,7 +46,7 @@ export async function handler(event: SQSEvent) {
       await s3Service.moveObject(
         Bucket,
         Key,
-        `${locationType}/${productType}/archive/${currentTimestamp}_${FileName}${FileExtension}`
+        `${cityType}/${productType}/archive/${currentTimestamp}_${FileName}${FileExtension}`
       );
     }
   }

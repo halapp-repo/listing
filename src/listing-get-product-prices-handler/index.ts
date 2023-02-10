@@ -6,8 +6,7 @@ import cors from '@middy/http-cors';
 import httpErrorHandler from '@middy/http-error-handler';
 import httpResponseSerializer from '@middy/http-response-serializer';
 import { APIGatewayProxyEvent, Context, APIGatewayProxyResult } from 'aws-lambda';
-import { LocationType } from '../models/location-type';
-import { ProductType } from '../models/product-type';
+import { CityType, ProductType } from '@halapp/common';
 import { IntervalType } from '../models/interval-type';
 import PriceRepository from '../repositories/price.repository';
 import createHttpError = require('http-errors');
@@ -62,16 +61,16 @@ function getDuration(duration: string | undefined): IntervalType {
   console.log('Duration :', JSON.stringify({ durationType }, null, 2));
   return durationType;
 }
-function getLocation(location: string | undefined): LocationType {
+function getLocation(location: string | undefined): CityType {
   if (!location) {
     throw createHttpError(400, 'location must be defined');
   }
-  const locationType = LocationType[location as keyof typeof LocationType];
-  if (!locationType) {
+  const cityType = CityType[location as keyof typeof CityType];
+  if (!cityType) {
     throw createHttpError(400, "location type isn't supported");
   }
-  console.log('Location :', JSON.stringify({ locationType }, null, 2));
-  return locationType;
+  console.log('Location :', JSON.stringify({ cityType: cityType }, null, 2));
+  return cityType;
 }
 function getProductType(type: string | undefined): ProductType {
   if (!type) {

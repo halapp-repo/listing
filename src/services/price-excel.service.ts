@@ -1,21 +1,20 @@
-import * as ExcelJS from "exceljs";
-import { Stream } from "stream";
-import { inject, injectable } from "tsyringe";
-import { PriceInputDTO } from "../models/dtos/price.input.dto";
-import { LocationType } from "../models/location-type";
-import { Price } from "../models/price";
-import { ProductType } from "../models/product-type";
-import { BaseFileService } from "./base-file.service";
-import { PriceToPriceInputDTOMapper as PrToPrInMapper } from "../mappers/price-to-price-input-dto.mapper";
+import * as ExcelJS from 'exceljs';
+import { Stream } from 'stream';
+import { inject, injectable } from 'tsyringe';
+import { PriceInputDTO } from '../models/dtos/price.input.dto';
+import { CityType, ProductType } from '@halapp/common';
+import { Price } from '../models/price';
+import { BaseFileService } from './base-file.service';
+import { PriceToPriceInputDTOMapper as PrToPrInMapper } from '../mappers/price-to-price-input-dto.mapper';
 
 @injectable()
 export class PriceExcelService implements BaseFileService<Price> {
   constructor(
-    @inject("PrToPrInMapper")
+    @inject('PrToPrInMapper')
     private mapper: PrToPrInMapper
   ) {}
-  setLocationType(location: LocationType) {
-    this.mapper.setLocationType(location);
+  setCityType(location: CityType) {
+    this.mapper.setCityType(location);
   }
   setProductType(product: ProductType) {
     this.mapper.setProductType(product);
@@ -24,10 +23,10 @@ export class PriceExcelService implements BaseFileService<Price> {
     this.mapper.setTimeStamp(timeStamp);
   }
   async read(stream: Stream): Promise<Price[]> {
-    console.log("Reading excel file");
+    console.log('Reading excel file');
     const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(stream, {
-      worksheets: "emit",
-      sharedStrings: "cache",
+      worksheets: 'emit',
+      sharedStrings: 'cache'
     });
     const priceInput: PriceInputDTO[] = [];
     for await (const worksheetReader of workbookReader) {
@@ -45,7 +44,7 @@ export class PriceExcelService implements BaseFileService<Price> {
             ProductId: productId,
             ProductName: productName,
             Price: Number(price),
-            Unit: unit,
+            Unit: unit
           });
         }
       }

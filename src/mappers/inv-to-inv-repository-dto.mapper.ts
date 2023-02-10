@@ -1,7 +1,7 @@
 import { InventoryRepositoryDTO } from '../models/dtos/inventory.repository.dto';
 import { Inventory } from '../models/inventory';
 import { InventoryType } from '../models/inventory-type';
-import { ProductType } from '../models/product-type';
+import { ProductType } from '@halapp/common';
 import { IMapper } from './base.mapper';
 
 export class InvToInvRepositoryDTOMapper extends IMapper<Inventory, InventoryRepositoryDTO> {

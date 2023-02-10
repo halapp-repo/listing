@@ -1,20 +1,19 @@
-import moment = require("moment");
-import { trMoment } from "../utils/timezone";
-import { LocationType } from "./location-type";
-import { ProductType } from "./product-type";
-import { Type, Transform } from "class-transformer";
+import moment = require('moment');
+import { trMoment } from '../utils/timezone';
+import { CityType, ProductType } from '@halapp/common';
+import { Type, Transform } from 'class-transformer';
 
 export class Price {
   ProductId: string;
 
   @Type(() => String)
   @Transform(({ value }: { value: string }) => trMoment(value), {
-    toClassOnly: true,
+    toClassOnly: true
   })
   TS: moment.Moment;
 
   Price: number;
-  Location: LocationType;
+  Location: CityType;
   Unit: string;
   Type: ProductType;
   Duration?: string;
@@ -23,17 +22,15 @@ export class Price {
 
   isSelectedDatePrice(selectedDate: moment.Moment): boolean {
     return this.TS.isBetween(
-      selectedDate.clone().startOf("day"),
-      selectedDate.clone().endOf("day")
+      selectedDate.clone().startOf('day'),
+      selectedDate.clone().endOf('day')
     );
   }
   setIncrease(previousPrice: number) {
     if (!previousPrice) {
       this.Increase = 0;
     }
-    this.Increase = Math.round(
-      ((this.Price - previousPrice) / previousPrice) * 100
-    );
+    this.Increase = Math.round(((this.Price - previousPrice) / previousPrice) * 100);
   }
   setActive(status: boolean) {
     this.Active = status;

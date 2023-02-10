@@ -6,9 +6,7 @@ import cors from '@middy/http-cors';
 import httpErrorHandler from '@middy/http-error-handler';
 import httpResponseSerializer from '@middy/http-response-serializer';
 import { Context, APIGatewayProxyResult, APIGatewayProxyEventV2 } from 'aws-lambda';
-import PriceRepository from '../repositories/price.repository';
-import { LocationType } from '../models/location-type';
-import { ProductType } from '../models/product-type';
+import { ProductType, CityType } from '@halapp/common';
 import { PriceToPriceVMMapper as PriceVMMapper } from '../mappers/price-to-price-vm.mapper';
 import { diContainer } from '../core/di-registry';
 import createHttpError = require('http-errors');
@@ -16,17 +14,17 @@ import { PriceService } from '../services/price.service';
 import { trMoment } from '../utils/timezone';
 
 const lambdaHandler = async function (
-  event: APIGatewayProxyEventV2,
+  event: APIGatewayProxyEventV2 | any,
   context: Context
 ): Promise<APIGatewayProxyResult> {
-  const location = getLocation(event.queryStringParameters?.location);
-  const type = getProductType(event.queryStringParameters?.type);
+  const city = getLocation(event.queryStringParameters?.location || event.City);
+  const type = getProductType(event.queryStringParameters?.type || event.Type);
   const date = getDate(event.queryStringParameters?.date);
 
   const priceService = diContainer.resolve(PriceService);
   const prices = await priceService.getPrices({
     date: date,
-    location: location,
+    location: city,
     type: type
   });
   return {
@@ -48,16 +46,16 @@ function getDate(date?: string): moment.Moment {
   console.log('Selected Date :', selectedDate.format());
   return selectedDate;
 }
-function getLocation(location: string | undefined): LocationType {
+function getLocation(location: string | undefined): CityType {
   if (!location) {
     throw createHttpError(400, 'location must be defined');
   }
-  const locationType = LocationType[location as keyof typeof LocationType];
-  if (!locationType) {
+  const cityType = CityType[location as keyof typeof CityType];
+  if (!cityType) {
     throw createHttpError(400, "location type isn't supported");
   }
-  console.log('Location :', JSON.stringify({ locationType }, null, 2));
-  return locationType;
+  console.log('Location :', JSON.stringify({ cityType: cityType }, null, 2));
+  return cityType;
 }
 function getProductType(type: string | undefined): ProductType {
   if (!type) {
@@ -71,9 +69,5 @@ function getProductType(type: string | undefined): ProductType {
   return productType;
 }
 
-const handler = middy(lambdaHandler)
-  .use(httpResponseSerializer())
-  .use(httpErrorHandler())
-  .use(cors());
-
+const handler = middy(lambdaHandler).use(httpResponseSerializer()).use(httpErrorHandler());
 export { handler, lambdaHandler };
