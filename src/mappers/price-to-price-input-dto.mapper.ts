@@ -1,15 +1,14 @@
 import { Price } from '../models/price';
 import { PriceInputDTO } from '../models/dtos/price.input.dto';
 import { IMapper } from './base.mapper';
-import { LocationType } from '../models/location-type';
-import { ProductType } from '../models/product-type';
+import { CityType, ProductType } from '@halapp/common';
 import { plainToClass } from 'class-transformer';
 
 export class PriceToPriceInputDTOMapper extends IMapper<Price, PriceInputDTO> {
-  private location: LocationType;
+  private location: CityType;
   private type: ProductType;
   private timestamp: string;
-  setLocationType(location: LocationType) {
+  setCityType(location: CityType) {
     this.location = location;
   }
   setProductType(type: ProductType) {
